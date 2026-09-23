@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bloxd.io 百鱼全书</title>
+<style>
+:root {
+  --bg:#0f172a; --card:#1e293b; --text:#e2e8f0; --muted:#94a3b8;
+  --accent:#38bdf8; --border:#334155;
+}
+* { box-sizing: border-box; }
+body {
+  margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text);
+}
+header { padding: 2rem 1rem 1rem; text-align: center; }
+header h1 { margin: 0 0 .5rem; font-size: 1.8rem; }
+header p { margin: 0; color: var(--muted); }
+.controls {
+  display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center;
+  padding: 1rem; position: sticky; top:0; background: rgba(15,23,42,.95);
+  backdrop-filter: blur(8px); z-index: 10; border-bottom: 1px solid var(--border);
+}
+.controls input, .controls select {
+  padding: .6rem .8rem; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-size: .95rem;
+}
+.controls input { min-width: 200px; flex: 1 1 240px; max-width: 400px; }
+#stats { text-align:center; color: var(--muted); font-size:.9rem; padding: .5rem 1rem 0; }
+.grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem; padding: 1rem; max-width: 1200px; margin: 0 auto;
+}
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  overflow: hidden; display: flex; flex-direction: column;
+  transition: transform .15s, border-color .15s;
+}
+.card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.card img {
+  width: 100%; height: 140px; object-fit: contain;
+  background: #0b1220; padding: .5rem;
+}
+.card-body { padding: .9rem; flex: 1; display: flex; flex-direction: column; gap: .4rem; }
+.card h2 { margin: 0; font-size: 1.1rem; }
+.card .cn { color: var(--muted); font-size: .9rem; }
+.badge {
+  display: inline-block; padding: .15rem .5rem; border-radius: 999px;
+  font-size: .75rem; font-weight: 600; align-self: flex-start;
+}
+.rarity-Common { background:#334155; color:#cbd5e1; }
+.rarity-Uncommon { background:#14532d; color:#86efac; }
+.rarity-Rare { background:#1e3a8a; color:#93c5fd; }
+.rarity-Ultra-Rare { background:#581c87; color:#d8b4fe; }
+.rarity-Legendary { background:#78350f; color:#fcd34d; }
+.meta { font-size: .85rem; color: var(--muted); line-height: 1.5; }
+.meta strong { color: var(--text); }
+.desc { font-size: .88rem; color: #cbd5e1; margin-top: .25rem; }
+.no-result { grid-column: 1/-1; text-align: center; padding: 3rem 1rem; color: var(--muted); }
+footer { text-align: center; padding: 2rem 1rem; color: var(--muted); font-size: .85rem; }
+@media (max-width: 480px) {
+  header h1 { font-size: 1.4rem; }
+  .grid { grid-template-columns: 1fr; padding: .75rem; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🐟 Bloxd.io 百鱼全书</h1>
+  <p>钓鱼更新鱼类图鉴 · 数据持续补充中</p>
+</header>
+
+<div class="controls">
+  <input type="search" id="searchInput" placeholder="搜索鱼名 / 中文名 / 描述...">
+  <select id="rarityFilter"><option value="">全部稀有度</option></select>
+  <select id="locationFilter"><option value="">全部地点</option></select>
+</div>
+
+<div id="stats"></div>
+<main class="grid" id="fishGrid"></main>
+
+<footer>数据来源于 Bloxd.io Wiki 与玩家实测 · 用 GitHub Pages 部署</footer>
+
+<script>
+const grid = document.getElementById('fishGrid');
+const searchInput = document.getElementById('searchInput');
+const rarityFilter = document.getElementById('rarityFilter');
+const locationFilter = document.getElementById('locationFilter');
+const stats = document.getElementById('stats');
+let allFish = [];
+
+function rarityClass(r) {
+  return 'rarity-' + (r || 'Common').replace(/\s+/g, '-');
+}
+
+function render(fishList) {
+  if (!fishList.length) {
+    grid.innerHTML = '<div class="no-result">没有找到匹配的鱼，试试其他关键词吧。</div>';
+    stats.textContent = '';
+    return;
+  }
+  grid.innerHTML = fishList.map(fish => `
+    <article class="card">
+      <img src="${fish.image || 'images/placeholder.png'}" alt="${fish.name}" loading="lazy"
+        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22140%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%230b1220%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%2364748b%22 font-size=%2214%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3E暂无图片%3C/text%3E%3C/svg%3E'">
+      <div class="card-body">
+        <h2>${fish.name}</h2>
+        ${fish.cnName ? `<div class="cn">${fish.cnName}</div>` : ''}
+        <span class="badge ${rarityClass(fish.rarity)}">${fish.rarity || '未知'}</span>
+        <div class="meta">
+          ${fish.location ? `<div><strong>地点：</strong>${fish.location}</div>` : ''}
+          ${fish.subLocation ? `<div><strong>子地点：</strong>${fish.subLocation}</div>` : ''}
+          ${fish.price != null ? `<div><strong>售价：</strong>${fish.price}</div>` : ''}
+          ${fish.weight ? `<div><strong>重量：</strong>${fish.weight}</div>` : ''}
+        </div>
+        ${fish.description ? `<div class="desc">${fish.description}</div>` : ''}
+      </div>
+    </article>
+  `).join('');
+  stats.textContent = `共 ${fishList.length} 条鱼`;
+}
+
+function applyFilters() {
+  const q = searchInput.value.trim().toLowerCase();
+  const rarity = rarityFilter.value;
+  const location = locationFilter.value;
+  const filtered = allFish.filter(fish => {
+    const text = [fish.name, fish.cnName, fish.description, fish.location, fish.subLocation]
+      .filter(Boolean).join(' ').toLowerCase();
+    const matchQ = !q || text.includes(q);
+    const matchRarity = !rarity || fish.rarity === rarity;
+    const matchLocation = !location ||
+      (fish.location || '').includes(location) ||
+      (fish.subLocation || '').includes(location);
+    return matchQ && matchRarity && matchLocation;
+  });
+  render(filtered);
+}
+
+function fillSelect(select, values) {
+  values.forEach(v => {
+    if (!v) return;
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    select.appendChild(opt);
+  });
+}
+
+fetch('fish-data.json')
+  .then(res => {
+    if (!res.ok) throw new Error('无法加载 fish-data.json');
+    return res.json();
+  })
+  .then(data => {
+    allFish = data;
+    const rarities = [...new Set(data.map(f => f.rarity).filter(Boolean))].sort();
+    const locations = [...new Set(data.map(f => f.location).filter(Boolean))].sort();
+    fillSelect(rarityFilter, rarities);
+    fillSelect(locationFilter, locations);
+    render(allFish);
+  })
+  .catch(err => {
+    grid.innerHTML = `<div class="no-result">加载数据失败：${err.message}<br>请确认 fish-data.json 与 index.html 在同一目录，并通过本地服务器或 GitHub Pages 访问。</div>`;
+  });
+
+searchInput.addEventListener('input', applyFilters);
+rarityFilter.addEventListener('change', applyFilters);
+locationFilter.addEventListener('change', applyFilters);
+</script>
+</body>
+</html>
