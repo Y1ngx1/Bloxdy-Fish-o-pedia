@@ -11,12 +11,28 @@
 }
 * { box-sizing: border-box; }
 body {
-  margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", "PingFang TC", sans-serif;
   background: var(--bg); color: var(--text);
 }
-header { padding: 2rem 1rem 1rem; text-align: center; }
+header { padding: 2rem 1rem 1rem; text-align: center; position: relative; }
 header h1 { margin: 0 0 .5rem; font-size: 1.8rem; }
 header p { margin: 0; color: var(--muted); }
+
+/* 语言切换器 */
+.lang-switch {
+  position: absolute; top: 1rem; right: 1rem;
+  display: flex; gap: .25rem;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: .2rem;
+}
+.lang-switch button {
+  background: transparent; border: none; color: var(--muted);
+  padding: .35rem .7rem; font-size: .85rem; cursor: pointer;
+  border-radius: 6px; transition: all .15s;
+}
+.lang-switch button:hover { color: var(--text); }
+.lang-switch button.active { background: var(--accent); color: #0f172a; font-weight: 600; }
+
 .controls {
   display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center;
   padding: 1rem; position: sticky; top:0; background: rgba(15,23,42,.95);
@@ -61,14 +77,21 @@ header p { margin: 0; color: var(--muted); }
 footer { text-align: center; padding: 2rem 1rem; color: var(--muted); font-size: .85rem; }
 @media (max-width: 480px) {
   header h1 { font-size: 1.4rem; }
+  .lang-switch { position: static; margin: 0 auto 1rem; width: fit-content; }
   .grid { grid-template-columns: 1fr; padding: .75rem; }
 }
 </style>
 </head>
 <body>
+
 <header>
-  <h1>🐟 Bloxd.io 百鱼全书</h1>
-  <p>钓鱼更新鱼类图鉴 · 数据持续补充中</p>
+  <div class="lang-switch" id="langSwitch">
+    <button data-lang="zh" class="active">简中</button>
+    <button data-lang="tw">繁中</button>
+    <button data-lang="jp">日本語</button>
+  </div>
+  <h1 id="title">🐟 Bloxd.io 百鱼全书</h1>
+  <p id="subtitle">钓鱼更新鱼类图鉴 · 数据持续补充中</p>
 </header>
 
 <div class="controls">
@@ -80,94 +103,235 @@ footer { text-align: center; padding: 2rem 1rem; color: var(--muted); font-size:
 <div id="stats"></div>
 <main class="grid" id="fishGrid"></main>
 
-<footer>数据来源于 Bloxd.io Wiki 与玩家实测 · 用 GitHub Pages 部署</footer>
+<footer id="footer">数据来源于 Bloxd.io Wiki 与玩家实测 · 用 GitHub Pages 部署</footer>
 
 <script>
+/* ============ 多语言 UI 文案 ============ */
+const I18N = {
+  zh: {
+    title: "🐟 Bloxd.io 百鱼全书",
+    subtitle: "钓鱼更新鱼类图鉴 · 数据持续补充中",
+    searchPlaceholder: "搜索鱼名 / 中文名 / 描述...",
+    allRarity: "全部稀有度",
+    allLocation: "全部地点",
+    noResult: "没有找到匹配的鱼，试试其他关键词吧。",
+    loadError: "加载数据失败",
+    loadErrorHint: "请确认 fish-data.json 与 index.html 在同一目录，并通过本地服务器或 GitHub Pages 访问。",
+    count: (n) => `共 ${n} 条鱼`,
+    labelLocation: "地点",
+    labelSubLocation: "子地点",
+    labelPrice: "售价",
+    labelWeight: "重量",
+    noImage: "暂无图片",
+    unknownRarity: "未知",
+    footer: "数据来源于 Bloxd.io Wiki 与玩家实测 · 用 GitHub Pages 部署"
+  },
+  tw: {
+    title: "🐟 Bloxd.io 百魚全書",
+    subtitle: "釣魚更新魚類圖鑑 · 資料持續補充中",
+    searchPlaceholder: "搜尋魚名 / 中文名 / 描述...",
+    allRarity: "全部稀有度",
+    allLocation: "全部地點",
+    noResult: "沒有找到符合的魚，試試其他關鍵字吧。",
+    loadError: "載入資料失敗",
+    loadErrorHint: "請確認 fish-data.json 與 index.html 在同一目錄，並透過本地伺服器或 GitHub Pages 存取。",
+    count: (n) => `共 ${n} 條魚`,
+    labelLocation: "地點",
+    labelSubLocation: "子地點",
+    labelPrice: "售價",
+    labelWeight: "重量",
+    noImage: "暫無圖片",
+    unknownRarity: "未知",
+    footer: "資料來源於 Bloxd.io Wiki 與玩家實測 · 用 GitHub Pages 部署"
+  },
+  jp: {
+    title: "🐟 Bloxd.io 魚図鑑",
+    subtitle: "釣りアップデート魚類図鑑 · データ随時更新中",
+    searchPlaceholder: "魚名 / 中国語名 / 説明で検索...",
+    allRarity: "すべてのレア度",
+    allLocation: "すべての場所",
+    noResult: "一致する魚が見つかりませんでした。別のキーワードをお試しください。",
+    loadError: "データの読み込みに失敗しました",
+    loadErrorHint: "fish-data.json が index.html と同じディレクトリにあるか、ローカルサーバーまたは GitHub Pages 経由でアクセスしているか確認してください。",
+    count: (n) => `全 ${n} 種`,
+    labelLocation: "場所",
+    labelSubLocation: "詳細地点",
+    labelPrice: "売値",
+    labelWeight: "重量",
+    noImage: "画像なし",
+    unknownRarity: "不明",
+    footer: "データ出典：Bloxd.io Wiki およびプレイヤー検証 · GitHub Pages で公開"
+  }
+};
+
+/* ============ 稀有度多语言映射 ============ */
+const RARITY_I18N = {
+  zh: { Common:"普通", Uncommon:"少见", Rare:"稀有", "Ultra Rare":"极稀有", Legendary:"传说" },
+  tw: { Common:"普通", Uncommon:"少見", Rare:"稀有", "Ultra Rare":"極稀有", Legendary:"傳說" },
+  jp: { Common:"コモン", Uncommon:"アンコモン", Rare:"レア", "Ultra Rare":"ウルトラレア", Legendary:"レジェンダリー" }
+};
+
+/* ============ 语言状态 ============ */
+let currentLang = localStorage.getItem('fishbook-lang') || 'zh';
+document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : currentLang === 'tw' ? 'zh-TW' : 'ja';
+
+/* ============ DOM 引用 ============ */
 const grid = document.getElementById('fishGrid');
 const searchInput = document.getElementById('searchInput');
 const rarityFilter = document.getElementById('rarityFilter');
 const locationFilter = document.getElementById('locationFilter');
 const stats = document.getElementById('stats');
+const titleEl = document.getElementById('title');
+const subtitleEl = document.getElementById('subtitle');
+const footerEl = document.getElementById('footer');
+const langSwitch = document.getElementById('langSwitch');
+
 let allFish = [];
 
-function rarityClass(r) {
-  return 'rarity-' + (r || 'Common').replace(/\s+/g, '-');
+function t() { return I18N[currentLang]; }
+function rarityClass(r) { return 'rarity-' + (r || 'Common').replace(/\s+/g, '-'); }
+function rarityLabel(r) {
+  if (!r) return t().unknownRarity;
+  return (RARITY_I18N[currentLang] && RARITY_I18N[currentLang][r]) || r;
 }
 
+/* ============ 从鱼数据中按当前语言取值（支持回退到英文） ============ */
+function localized(fish, key) {
+  const pack = fish[currentLang];
+  if (pack && pack[key]) return pack[key];
+  // 回退顺序：简中 → 英文原始字段
+  if (fish.zh && fish.zh[key]) return fish.zh[key];
+  return fish[key] || '';
+}
+
+/* ============ 渲染 ============ */
 function render(fishList) {
   if (!fishList.length) {
-    grid.innerHTML = '<div class="no-result">没有找到匹配的鱼，试试其他关键词吧。</div>';
+    grid.innerHTML = `<div class="no-result">${t().noResult}</div>`;
     stats.textContent = '';
     return;
   }
-  grid.innerHTML = fishList.map(fish => `
-    <article class="card">
-      <img src="${fish.image || 'images/placeholder.png'}" alt="${fish.name}" loading="lazy"
-        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22140%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%230b1220%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%2364748b%22 font-size=%2214%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3E暂无图片%3C/text%3E%3C/svg%3E'">
-      <div class="card-body">
-        <h2>${fish.name}</h2>
-        ${fish.cnName ? `<div class="cn">${fish.cnName}</div>` : ''}
-        <span class="badge ${rarityClass(fish.rarity)}">${fish.rarity || '未知'}</span>
-        <div class="meta">
-          ${fish.location ? `<div><strong>地点：</strong>${fish.location}</div>` : ''}
-          ${fish.subLocation ? `<div><strong>子地点：</strong>${fish.subLocation}</div>` : ''}
-          ${fish.price != null ? `<div><strong>售价：</strong>${fish.price}</div>` : ''}
-          ${fish.weight ? `<div><strong>重量：</strong>${fish.weight}</div>` : ''}
+  grid.innerHTML = fishList.map(fish => {
+    const cnName = localized(fish, 'name');      // 本地化鱼名
+    const location = localized(fish, 'location');
+    const subLocation = localized(fish, 'subLocation');
+    const description = localized(fish, 'description');
+
+    return `
+      <article class="card">
+        <img src="${fish.image || 'images/placeholder.png'}" alt="${fish.name}" loading="lazy"
+          onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22140%22%3E%3Crect width=%22100%25%22 height=%22100%25%22 fill=%22%230b1220%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%2364748b%22 font-size=%2214%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3E${encodeURIComponent(t().noImage)}%3C/text%3E%3C/svg%3E'">
+        <div class="card-body">
+          <h2>${fish.name}</h2>
+          ${cnName && cnName !== fish.name ? `<div class="cn">${cnName}</div>` : ''}
+          <span class="badge ${rarityClass(fish.rarity)}">${rarityLabel(fish.rarity)}</span>
+          <div class="meta">
+            ${location ? `<div><strong>${t().labelLocation}：</strong>${location}</div>` : ''}
+            ${subLocation ? `<div><strong>${t().labelSubLocation}：</strong>${subLocation}</div>` : ''}
+            ${fish.price != null ? `<div><strong>${t().labelPrice}：</strong>${fish.price}</div>` : ''}
+            ${fish.weight ? `<div><strong>${t().labelWeight}：</strong>${fish.weight}</div>` : ''}
+          </div>
+          ${description ? `<div class="desc">${description}</div>` : ''}
         </div>
-        ${fish.description ? `<div class="desc">${fish.description}</div>` : ''}
-      </div>
-    </article>
-  `).join('');
-  stats.textContent = `共 ${fishList.length} 条鱼`;
+      </article>
+    `;
+  }).join('');
+  stats.textContent = t().count(fishList.length);
 }
 
+/* ============ 筛选 ============ */
 function applyFilters() {
   const q = searchInput.value.trim().toLowerCase();
   const rarity = rarityFilter.value;
   const location = locationFilter.value;
+
   const filtered = allFish.filter(fish => {
-    const text = [fish.name, fish.cnName, fish.description, fish.location, fish.subLocation]
-      .filter(Boolean).join(' ').toLowerCase();
+    const text = [
+      fish.name,
+      localized(fish, 'name'),
+      localized(fish, 'description'),
+      localized(fish, 'location'),
+      localized(fish, 'subLocation')
+    ].filter(Boolean).join(' ').toLowerCase();
     const matchQ = !q || text.includes(q);
     const matchRarity = !rarity || fish.rarity === rarity;
     const matchLocation = !location ||
-      (fish.location || '').includes(location) ||
-      (fish.subLocation || '').includes(location);
+      (localized(fish, 'location') || '').includes(location) ||
+      (localized(fish, 'subLocation') || '').includes(location);
     return matchQ && matchRarity && matchLocation;
   });
   render(filtered);
 }
 
-function fillSelect(select, values) {
-  values.forEach(v => {
-    if (!v) return;
+/* ============ 稀有度/地点下拉框（按当前语言重建） ============ */
+function rebuildSelects() {
+  const savedRarity = rarityFilter.value;
+  const savedLocation = locationFilter.value;
+
+  rarityFilter.innerHTML = `<option value="">${t().allRarity}</option>`;
+  locationFilter.innerHTML = `<option value="">${t().allLocation}</option>`;
+
+  const rarities = [...new Set(allFish.map(f => f.rarity).filter(Boolean))];
+  rarities.forEach(r => {
     const opt = document.createElement('option');
-    opt.value = v;
-    opt.textContent = v;
-    select.appendChild(opt);
+    opt.value = r;
+    opt.textContent = rarityLabel(r);
+    rarityFilter.appendChild(opt);
   });
+
+  const locations = [...new Set(allFish.map(f => localized(f, 'location')).filter(Boolean))].sort();
+  locations.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l;
+    opt.textContent = l;
+    locationFilter.appendChild(opt);
+  });
+
+  if ([...rarityFilter.options].some(o => o.value === savedRarity)) rarityFilter.value = savedRarity;
+  if ([...locationFilter.options].some(o => o.value === savedLocation)) locationFilter.value = savedLocation;
 }
 
+/* ============ 应用语言（切换界面文案） ============ */
+function applyLanguage(lang) {
+  currentLang = lang;
+  localStorage.setItem('fishbook-lang', lang);
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang === 'tw' ? 'zh-TW' : 'ja';
+
+  titleEl.textContent = t().title;
+  subtitleEl.textContent = t().subtitle;
+  searchInput.placeholder = t().searchPlaceholder;
+  footerEl.textContent = t().footer;
+
+  [...langSwitch.children].forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+
+  rebuildSelects();
+  applyFilters();
+}
+
+/* ============ 事件绑定 ============ */
+langSwitch.addEventListener('click', e => {
+  const btn = e.target.closest('button[data-lang]');
+  if (btn) applyLanguage(btn.dataset.lang);
+});
+searchInput.addEventListener('input', applyFilters);
+rarityFilter.addEventListener('change', applyFilters);
+locationFilter.addEventListener('change', applyFilters);
+
+/* ============ 加载数据 ============ */
 fetch('fish-data.json')
   .then(res => {
-    if (!res.ok) throw new Error('无法加载 fish-data.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
   })
   .then(data => {
     allFish = data;
-    const rarities = [...new Set(data.map(f => f.rarity).filter(Boolean))].sort();
-    const locations = [...new Set(data.map(f => f.location).filter(Boolean))].sort();
-    fillSelect(rarityFilter, rarities);
-    fillSelect(locationFilter, locations);
-    render(allFish);
+    applyLanguage(currentLang);
   })
   .catch(err => {
-    grid.innerHTML = `<div class="no-result">加载数据失败：${err.message}<br>请确认 fish-data.json 与 index.html 在同一目录，并通过本地服务器或 GitHub Pages 访问。</div>`;
+    grid.innerHTML = `<div class="no-result">${t().loadError}：${err.message}<br>${t().loadErrorHint}</div>`;
   });
-
-searchInput.addEventListener('input', applyFilters);
-rarityFilter.addEventListener('change', applyFilters);
-locationFilter.addEventListener('change', applyFilters);
 </script>
 </body>
 </html>
