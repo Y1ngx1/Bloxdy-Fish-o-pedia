@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Wheatfish",
+    "cnName": "穗鱼",
+    "rarity": "Common",
+    "location": "Sunhaven 周边水域",
+    "subLocation": "海岸、陨石点、Wheatfish Pond",
+    "price": 5,
+    "weight": "0.5 - 2 kg",
+    "description": "一条柔软温和的鱼，据说看起来像一捆小麦。教程中第一条鱼固定是它。",
+    "image": "images/wheatfish.png"
+  },
+  {
+    "name": "Darter",
+    "cnName": "镖鲈",
+    "rarity": "Common",
+    "location": "Sunhaven 周边水域",
+    "subLocation": "海岸、陨石点、开阔海洋",
+    "price": null,
+    "weight": "0.3 - 1 kg",
+    "description": "浅米色身体，尾巴有深色斑点。另有一个通体黑色的稀有变种 Shadow Darter。",
+    "image": "images/darter.png"
+  },
+  {
+    "name": "Golden Mahseer",
+    "cnName": "金结鱼",
+    "rarity": "Common",
+    "location": "绿洲水域",
+    "subLocation": "待实测",
+    "price": null,
+    "weight": "待实测",
+    "description": "现实中是南亚的“河流之虎”，可长到 2.75 米。游戏里是普通渔获。",
+    "image": "images/golden-mahseer.png"
+  }
+]
